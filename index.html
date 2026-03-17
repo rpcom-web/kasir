@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Kasir v6.4 - dengan Barcode Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="loginPage" class="login-page">
+        <div class="login-card">
+            <h2><i class="fas fa-user-circle"></i> Login Aplikasi Kasir</h2>
+            <form id="formLoginPage" onsubmit="event.preventDefault(); loginUser();">
+                <div class="form-group"><label>Username</label><input type="text" id="loginUsername" class="form-control" required autofocus></div>
+                <div class="form-group"><label>Password</label><input type="password" id="loginPassword" class="form-control" required></div>
+                <div class="form-group checkbox-label"><label><input type="checkbox" id="rememberMe"> Remember Me</label></div>
+                <button type="submit" class="btn btn-success">Login</button>
+            </form>
+            <p id="loginStatus" style="color:red; margin-top:10px;"></p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <h1><i class="fas fa-cash-register"></i> Aplikasi Kasir v6.4 - Barcode Scanner</h1>
+        <div class="header-buttons">
+            <button class="btn btn-warning" onclick="gantiPassword()"><i class="fas fa-key"></i> Ganti Password</button>
+            <button class="btn btn-info" onclick="gantiUsername()"><i class="fas fa-user-edit"></i> Ganti Username</button>
+            <span class="user-info">User: owner | Role: Owner</span>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="menu">
+                <a href="#" class="menu-item active" onclick="showPage('dashboard')">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('manajemen-barang')">
+                    <i class="fas fa-boxes"></i> Manajemen Barang
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('transaksi')">
+                    <i class="fas fa-shopping-cart"></i> Transaksi
+                </a>
+                <a href="#" class="menu-item submenu" onclick="showPage('transaksi-retur')">
+                    <i class="fas fa-undo"></i> Transaksi Retur
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('laporan')">
+                    <i class="fas fa-chart-bar"></i> Laporan & Laba
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('manajemen-user')">
+                    <i class="fas fa-users"></i> Manajemen User
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('pengaturan')">
+                    <i class="fas fa-cog"></i> Pengaturan
+                </a>
+                <a href="#" class="menu-item" onclick="showPage('log-aktivitas')">
+                    <i class="fas fa-history"></i> Log Aktivitas
+                </a>
+                <a href="#" class="menu-item btn-backup" onclick="backupDatabase()">
+                    <i class="fas fa-database"></i> Backup Database
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page active">
+                <h2>Dashboard</h2>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <i class="fas fa-box"></i>
+                        <h3>Total Produk</h3>
+                        <p class="number" id="totalProduk">0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-receipt"></i>
+                        <h3>Transaksi Hari Ini</h3>
+                        <p class="number" id="transaksiHariIni">0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <h3>Pendapatan Hari Ini</h3>
+                        <p class="number" id="pendapatanHariIni">Rp 0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Laba Bersih</h3>
+                        <p class="number" id="labaBersih">Rp 0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaksi Penjualan Page -->
+            <div id="transaksi" class="page">
+                <h2>TRANSAKSI PENJUALAN</h2>
+                <div class="scan-status">
+                    <span id="itemCount">0 item | Rp 0</span>
+                    <button class="btn btn-scan" onclick="toggleScan()" id="scanBtn">
+                        <i class="fas fa-qrcode"></i> SCAN: ON
+                    </button>
+                </div>
+
+                <div class="transaksi-content">
+                    <div class="left-panel">
+                        <!-- Scan Barcode -->
+                        <div class="scan-section">
+                            <input type="text" id="barcodeInput" placeholder="Scan atau ketik barcode..." class="barcode-input">
+                            <button class="btn btn-primary" onclick="tambahBarang()">TAMBAH</button>
+                        </div>
+
+                        <div class="button-row">
+                            <button class="btn btn-warning" onclick="pauseScan()" id="pauseBtn">
+                                <i class="fas fa-pause"></i> PAUSE SCAN
+                            </button>
+                            <button class="btn btn-success" onclick="autoAdd()" id="autoAddBtn">
+                                <i class="fas fa-check"></i> AUTO ADD: ON
+                            </button>
+                        </div>
+
+                        <!-- Cari Manual -->
+                        <div class="search-section">
+                            <h3><i class="fas fa-search"></i> Cari Manual:</h3>
+                            <input type="text" id="searchInput" placeholder="Cari nama barang..." class="search-input">
+                            <button class="btn btn-primary" onclick="cariBarang()">CARI</button>
+                        </div>
+
+                        <!-- Daftar Barang -->
+                        <div class="product-list">
+                            <h3><i class="fas fa-list"></i> DAFTAR BARANG</h3>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>KODE</th>
+                                        <th>NAMA BARANG</th>
+                                        <th>HARGA</th>
+                                        <th>STOK</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productTableBody">
+                                    <!-- Products will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="hint"><i class="fas fa-info-circle"></i> Double klik barang atau scan barcode untuk menambah ke keranjang</p>
+                    </div>
+
+                    <div class="right-panel">
+                        <h3><i class="fas fa-shopping-basket"></i> KERANJANG BELANJA</h3>
+                        <div class="form-group">
+                            <label>Nama Pelanggan</label>
+                            <input type="text" id="namaPelanggan" class="form-control" placeholder="Nama pelanggan...">
+                        </div>
+                        <div class="form-group">
+                            <label>No. Telepon Pelanggan</label>
+                            <input type="tel" id="telpPelanggan" class="form-control" placeholder="0812xxxxxxx">
+                        </div>
+                        <div class="cart-table-container">
+                            <table class="table cart-table">
+                                <thead>
+                                    <tr>
+                                        <th>NAMA</th>
+                                        <th>QTY</th>
+                                        <th>HARGA</th>
+                                        <th>SUBTOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cartTableBody">
+                                    <!-- Cart items will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button class="btn btn-info btn-block" onclick="tambahManual()">
+                            <i class="fas fa-plus"></i> TAMBAH MANUAL
+                        </button>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-warning" onclick="editQty()">
+                                <i class="fas fa-edit"></i> EDIT QTY
+                            </button>
+                            <button class="btn btn-danger" onclick="hapusItem()">
+                                <i class="fas fa-trash"></i> HAPUS
+                            </button>
+                            <button class="btn btn-secondary" onclick="kosongkanKeranjang()">
+                                <i class="fas fa-times"></i> KOSONGKAN
+                            </button>
+                        </div>
+
+                        <!-- Payment Section -->
+                        <div class="payment-section">
+                            <h3>PEMBAYARAN</h3>
+                            <div class="payment-row">
+                                <label>SUBTOTAL</label>
+                                <span class="amount" id="subtotal">Rp 0</span>
+                            </div>
+                            <div class="payment-row">
+                                <label>DISKON (Rp)</label>
+                                <input type="number" id="diskonRp" value="0" class="input-small" onchange="hitungTotal()">
+                            </div>
+                            <div class="payment-row">
+                                <label>DISKON (%)</label>
+                                <input type="number" id="diskonPersen" value="0" class="input-small" onchange="hitungTotal()">
+                            </div>
+                            <div class="discount-buttons">
+                                <button class="btn btn-success btn-sm" onclick="terapkanDiskon()">
+                                    <i class="fas fa-check"></i> TERAPKAN
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="resetDiskon()">
+                                    <i class="fas fa-redo"></i> RESET
+                                </button>
+                            </div>
+                            <div class="payment-row">
+                                <label>TOTAL DISKON</label>
+                                <span class="amount" id="totalDiskon">Rp 0</span>
+                            </div>
+                            <div class="payment-row total-row">
+                                <label>TOTAL BAYAR</label>
+                                <span class="amount total" id="totalBayar">Rp 0</span>
+                            </div>
+                            <div class="payment-row">
+                                <label>TUNAI</label>
+                                <input type="number" id="tunai" value="0" class="input-medium" onchange="hitungKembalian()">
+                            </div>
+                            <div class="payment-row kembalian-row">
+                                <label>KEMBALIAN</label>
+                                <span class="amount" id="kembalian">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <div class="final-buttons">
+                            <button class="btn btn-success btn-lg" onclick="prosesTransaksi()">
+                                <i class="fas fa-check-circle"></i> PROSES TRANSAKSI
+                            </button>
+                            <button class="btn btn-secondary btn-lg" onclick="cetakStruk()">
+                                <i class="fas fa-print"></i> CETAK STRUK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manajemen Barang Page -->
+            <div id="manajemen-barang" class="page">
+                <h2>MANAJEMEN BARANG</h2>
+                <button class="btn btn-success" onclick="tambahBarangBaru()">
+                    <i class="fas fa-plus"></i> Tambah Barang Baru
+                </button>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>KODE</th>
+                                <th>BARCODE</th>
+                                <th>NAMA BARANG</th>
+                                <th>HARGA BELI</th>
+                                <th>HARGA JUAL</th>
+                                <th>STOK</th>
+                                <th>AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="manajemenBarangBody">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Other pages would be added similarly -->
+            <div id="transaksi-retur" class="page">
+                <h2>TRANSAKSI RETUR</h2>
+                <div class="retur-grid">
+                    <div class="retur-left">
+                        <div class="scan-section">
+                            <input type="text" id="barcodeRetur" placeholder="Scan atau ketik barcode produk..." class="barcode-input">
+                            <input type="number" id="qtyRetur" placeholder="Qty retur" class="input-small" min="1" value="1">
+                            <button class="btn btn-primary" onclick="tambahRetur()">TAMBAH RETUR</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Alasan Retur</label>
+                            <textarea id="alasanRetur" class="form-control" rows="2" placeholder="Contoh: rusak, kadaluarsa, salah kirim..."></textarea>
+                        </div>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>BARCODE</th>
+                                        <th>NAMA</th>
+                                        <th>QTY</th>
+                                        <th>HARGA</th>
+                                        <th>SUBTOTAL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="returTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="retur-right">
+                        <div class="payment-section">
+                            <h3>RINGKASAN RETUR</h3>
+                            <div class="payment-row"><label>Total Item Retur</label><span id="totalReturItem">0</span></div>
+                            <div class="payment-row"><label>Total Nilai Retur</label><span id="totalNilaiRetur">Rp 0</span></div>
+                            <div class="form-group">
+                                <label>Keterangan tambahan</label>
+                                <textarea id="keteranganRetur" class="form-control" rows="3"></textarea>
+                            </div>
+                            <button class="btn btn-success btn-block" onclick="prosesTransaksiRetur()">PROSES RETUR</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-container" style="margin-top:20px;">
+                    <h3>Riwayat Retur Terakhir</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID Retur</th>
+                                <th>Tanggal</th>
+                                <th>Total</th>
+                                <th>Item</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyReturBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="laporan" class="page">
+                <h2>LAPORAN & LABA</h2>
+                <div class="laporan-top">
+                    <div class="form-group">
+                        <label>Dari Tanggal</label>
+                        <input type="date" id="laporanDari" class="form-control" onchange="loadLaporan()">
+                    </div>
+                    <div class="form-group">
+                        <label>Sampai Tanggal</label>
+                        <input type="date" id="laporanSampai" class="form-control" onchange="loadLaporan()">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary btn-block" onclick="setPeriode('today')">Hari Ini</button>
+                        <button class="btn btn-info btn-block" onclick="setPeriode('week')">Minggu Ini</button>
+                        <button class="btn btn-warning btn-block" onclick="setPeriode('month')">Bulan Ini</button>
+                    </div>
+                    <div class="form-group button-row-report">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-success" onclick="exportLaporanExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
+                        <button class="btn btn-secondary" onclick="exportLaporanPDF()"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    </div>
+                </div>
+                <div class="dashboard-cards laporan-cards">
+                    <div class="card">
+                        <i class="fas fa-dollar-sign"></i>
+                        <h3>Total Pendapatan</h3>
+                        <p class="number" id="laporanPendapatan">Rp 0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-coins"></i>
+                        <h3>Total Biaya</h3>
+                        <p class="number" id="laporanBiaya">Rp 0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Total Laba</h3>
+                        <p class="number" id="laporanLaba">Rp 0</p>
+                    </div>
+                    <div class="card">
+                        <i class="fas fa-undo"></i>
+                        <h3>Total Retur</h3>
+                        <p class="number" id="laporanRetur">Rp 0</p>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Grafik Penjualan</h3>
+                    <canvas id="laporanChart" height="120"></canvas>
+                </div>
+
+                <div class="table-container" style="margin-top:20px;">
+                    <h3>Detail Transaksi Terakhir</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tanggal</th>
+                                <th>Total</th>
+                                <th>Items</th>
+                            </tr>
+                        </thead>
+                        <tbody id="laporanTransaksiBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-container" style="margin-top:20px;">
+                    <h3>Detail Retur Terakhir</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID Retur</th>
+                                <th>Tanggal</th>
+                                <th>Total</th>
+                                <th>Item</th>
+                            </tr>
+                        </thead>
+                        <tbody id="laporanReturBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="manajemen-user" class="page">
+                <h2>MANAJEMEN USER</h2>
+                <div class="main-actions" style="margin-bottom: 15px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button class="btn btn-success" onclick="tambahUserModal()"><i class="fas fa-user-plus"></i> Tambah User Baru</button>
+                    <button class="btn btn-info" onclick="loadManajemenUser()"><i class="fas fa-sync"></i> Refresh Daftar</button>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Nama</th>
+                                <th>Role</th>
+                                <th>Hak Akses</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="settings-card" style="margin-top:20px;">
+                    <div class="settings-header"><i class="fas fa-user-shield"></i><h3>Hak Akses Menu Default</h3></div>
+                    <div class="form-group"><label>Role</label><select id="defaultRole" class="form-control"><option value="Owner">Owner</option><option value="Kasir">Kasir</option><option value="Manajer">Manajer</option></select></div>
+                    <div class="form-group"><label>Akses Menu</label><div id="defaultMenuAkses" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;"></div></div>
+                    <button class="btn btn-success" style="margin-top:10px;" onclick="simpanHakAksesDefault()">Simpan Hak Akses Default</button>
+                </div>
+            </div>
+
+            <div id="pengaturan" class="page">
+                <h2><i class="fas fa-cog"></i> PENGATURAN SISTEM</h2>
+                
+                <div class="settings-grid">
+                    <!-- Pengaturan Toko -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-store"></i>
+                            <h3>Informasi Toko</h3>
+                        </div>
+                        <form id="formInfoToko">
+                            <div class="form-group">
+                                <label>Nama Toko</label>
+                                <input type="text" id="namaToko" class="form-control" value="TOKO ABC">
+                            </div>
+                            <div class="form-group">
+                                <label>Alamat</label>
+                                <textarea id="alamatToko" class="form-control" rows="3">Jl. Contoh No. 123, Jakarta</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Telepon</label>
+                                <input type="tel" id="teleponToko" class="form-control" value="0812-3456-7890">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="emailToko" class="form-control" value="info@tokoabc.com">
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanInfoToko()">
+                                <i class="fas fa-save"></i> Simpan Informasi Toko
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Printer -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-print"></i>
+                            <h3>Pengaturan Printer</h3>
+                        </div>
+                        <form id="formPrinter">
+                            <div class="form-group">
+                                <label>Jenis Printer</label>
+                                <select id="jenisPrinter" class="form-control">
+                                    <option value="thermal">Thermal Printer (58mm)</option>
+                                    <option value="thermal80">Thermal Printer (80mm)</option>
+                                    <option value="regular">Regular Printer (A4)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Jumlah Salinan Struk</label>
+                                <input type="number" id="jumlahSalinan" class="form-control" value="1" min="1" max="5">
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autoOpenCashDrawer" checked>
+                                    <span>Buka Laci Kasir Otomatis</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="printLogo" checked>
+                                    <span>Cetak Logo Toko</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="printBarcode" checked>
+                                    <span>Cetak Barcode pada Struk</span>
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanPrinter()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Printer
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="testPrint()">
+                                <i class="fas fa-print"></i> Test Print
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Pajak & Diskon -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-percentage"></i>
+                            <h3>Pajak & Diskon</h3>
+                        </div>
+                        <form id="formPajak">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="enablePajak">
+                                    <span>Aktifkan Pajak (PPN)</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Persentase Pajak (%)</label>
+                                <input type="number" id="persentasePajak" class="form-control" value="10" min="0" max="100" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Diskon Maksimal (%)</label>
+                                <input type="number" id="diskonMaksimal" class="form-control" value="50" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Diskon Member (%)</label>
+                                <input type="number" id="diskonMember" class="form-control" value="5" min="0" max="100">
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanPajak()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Pajak
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Notifikasi -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-bell"></i>
+                            <h3>Notifikasi</h3>
+                        </div>
+                        <form id="formNotifikasi">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifStokHabis" checked>
+                                    <span>Notifikasi Stok Habis</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Batas Minimum Stok</label>
+                                <input type="number" id="batasMinimumStok" class="form-control" value="5" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="notifTransaksiBerhasil" checked>
+                                    <span>Notifikasi Transaksi Berhasil</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="soundEffect" checked>
+                                    <span>Efek Suara (Beep)</span>
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanNotifikasi()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Notifikasi
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Scanner -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-qrcode"></i>
+                            <h3>Pengaturan Scanner</h3>
+                        </div>
+                        <form id="formScanner">
+                            <div class="form-group">
+                                <label>Tipe Scanner</label>
+                                <select id="tipeScanner" class="form-control">
+                                    <option value="keyboard">Keyboard Emulation</option>
+                                    <option value="usb">USB Scanner</option>
+                                    <option value="bluetooth">Bluetooth Scanner</option>
+                                    <option value="camera">Camera Scanner</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autoAddBarcode" checked>
+                                    <span>Auto Add Setelah Scan</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Delay Scan (ms)</label>
+                                <input type="number" id="delayScan" class="form-control" value="100" min="0" step="50">
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="prefixScanner">
+                                    <span>Gunakan Prefix Barcode</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Prefix Barcode</label>
+                                <input type="text" id="prefixBarcodeValue" class="form-control" placeholder="Contoh: BRG">
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanScanner()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Scanner
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Tampilan -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-palette"></i>
+                            <h3>Tampilan</h3>
+                        </div>
+                        <form id="formTampilan">
+                            <div class="form-group">
+                                <label>Tema Warna</label>
+                                <select id="temaWarna" class="form-control" onchange="ubahTema()">
+                                    <option value="default">Default (Biru)</option>
+                                    <option value="dark">Dark (Gelap)</option>
+                                    <option value="green">Green (Hijau)</option>
+                                    <option value="purple">Purple (Ungu)</option>
+                                    <option value="red">Red (Merah)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Ukuran Font</label>
+                                <select id="ukuranFont" class="form-control" onchange="ubahUkuranFont()">
+                                    <option value="small">Kecil</option>
+                                    <option value="medium" selected>Sedang</option>
+                                    <option value="large">Besar</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Bahasa</label>
+                                <select id="bahasa" class="form-control">
+                                    <option value="id" selected>Indonesia</option>
+                                    <option value="en">English</option>
+                                    <option value="zh">中文 (Chinese)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="modeLebar" checked>
+                                    <span>Mode Layar Lebar</span>
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanTampilan()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Tampilan
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengaturan Database -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-database"></i>
+                            <h3>Database & Backup</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Backup Otomatis</label>
+                            <select id="autoBackup" class="form-control">
+                                <option value="never">Tidak Pernah</option>
+                                <option value="daily">Setiap Hari</option>
+                                <option value="weekly" selected>Setiap Minggu</option>
+                                <option value="monthly">Setiap Bulan</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Hapus Data Lama Otomatis</label>
+                            <select id="autoDeleteOldData" class="form-control">
+                                <option value="never" selected>Tidak Pernah</option>
+                                <option value="3months">Setelah 3 Bulan</option>
+                                <option value="6months">Setelah 6 Bulan</option>
+                                <option value="1year">Setelah 1 Tahun</option>
+                            </select>
+                        </div>
+                        <div class="database-info">
+                            <p><strong>Ukuran Database:</strong> <span id="ukuranDatabase">0 KB</span></p>
+                            <p><strong>Total Transaksi:</strong> <span id="totalTransaksi">0</span></p>
+                            <p><strong>Total Produk:</strong> <span id="totalProdukDb">0</span></p>
+                            <p><strong>Backup Terakhir:</strong> <span id="backupTerakhir">Belum pernah</span></p>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" class="btn btn-success" onclick="backupDatabase()">
+                                <i class="fas fa-download"></i> Backup Sekarang
+                            </button>
+                            <button type="button" class="btn btn-info" onclick="restoreDatabase()">
+                                <i class="fas fa-upload"></i> Restore Database
+                            </button>
+                            <button type="button" class="btn btn-warning" onclick="resetDatabase()">
+                                <i class="fas fa-redo"></i> Reset Database
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="hapusSemua()">
+                                <i class="fas fa-trash"></i> Hapus Semua Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pengaturan Keamanan -->
+                    <div class="settings-card">
+                        <div class="settings-header">
+                            <i class="fas fa-shield-alt"></i>
+                            <h3>Keamanan</h3>
+                        </div>
+                        <form id="formKeamanan">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="requiredLogin" checked>
+                                    <span>Wajib Login</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Timeout Sesi (menit)</label>
+                                <input type="number" id="timeoutSesi" class="form-control" value="30" min="5" max="480">
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="logActivity" checked>
+                                    <span>Catat Log Aktivitas</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="requirePasswordTransaction">
+                                    <span>Password untuk Hapus Transaksi</span>
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-warning" onclick="gantiPassword()">
+                                <i class="fas fa-key"></i> Ganti Password
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="simpanPengaturanKeamanan()">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Keamanan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tombol Reset Semua Pengaturan -->
+                <div class="settings-footer">
+                    <button type="button" class="btn btn-danger" onclick="resetSemuaPengaturan()">
+                        <i class="fas fa-exclamation-triangle"></i> Reset Semua Pengaturan ke Default
+                    </button>
+                </div>
+            </div>
+
+            <div id="log-aktivitas" class="page">
+                <h2>LOG AKTIVITAS</h2>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>User</th>
+                                <th>Aksi</th>
+                                <th>Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logAktivitasBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal untuk tambah barang -->
+    <div id="modalTambahBarang" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modalTambahBarang')">&times;</span>
+            <h2>Tambah Barang Baru</h2>
+            <form id="formTambahBarang">
+                <div class="form-group">
+                    <label>Kode Barang</label>
+                    <input type="text" id="kodeBarang" required>
+                </div>
+                <div class="form-group">
+                    <label>Barcode</label>
+                    <input type="text" id="barcode" required>
+                </div>
+                <div class="form-group">
+                    <label>Nama Barang</label>
+                    <input type="text" id="namaBarang" required>
+                </div>
+                <div class="form-group">
+                    <label>Harga Beli</label>
+                    <input type="number" id="hargaBeli" required>
+                </div>
+                <div class="form-group">
+                    <label>Harga Jual</label>
+                    <input type="number" id="hargaJual" required>
+                </div>
+                <div class="form-group">
+                    <label>Stok</label>
+                    <input type="number" id="stok" required>
+                </div>
+                <button type="submit" class="btn btn-success">Simpan</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalTambahBarang')">Batal</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalUser" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modalUser')">&times;</span>
+            <h2 id="modalUserTitle">Tambah User</h2>
+            <form id="formUser" onsubmit="event.preventDefault(); simpanUser();">
+                <input type="hidden" id="editUserIndex">
+                <div class="form-group"><label>Username</label><input type="text" id="usernameUser" class="form-control" required></div>
+                <div class="form-group"><label>Nama Lengkap</label><input type="text" id="namaUser" class="form-control" required></div>
+                <div class="form-group"><label>Password</label><input type="password" id="passwordUser" class="form-control" required></div>
+                <div class="form-group"><label>Role</label><select id="roleUser" class="form-control"><option value="Owner">Owner</option><option value="Manajer">Manajer</option><option value="Kasir">Kasir</option></select></div>
+                <div class="form-group"><label>Hak Akses Menu</label><div id="userAksesMenu" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div></div>
+                <button type="submit" class="btn btn-success">Simpan User</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalUser')">Batal</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
