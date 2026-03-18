@@ -31,6 +31,7 @@ function initFirebase() {
         firebaseApp = firebase.initializeApp(firebaseConfig);
         firebaseDb = firebase.database();
         console.log('Firebase berhasil diinisialisasi.');
+        setupFirebaseListeners();
     } catch (err) {
         console.error('Gagal inisialisasi Firebase:', err);
     }
@@ -39,6 +40,70 @@ function initFirebase() {
 function saveToFirebase(path, data) {
     if (!firebaseDb) return;
     firebaseDb.ref(path).set(data).catch(err => console.error('Firebase save error', err));
+}
+
+function setupFirebaseListeners() {
+    if (!firebaseDb) return;
+
+    const updateIfRemoteExists = (snapshot, defaultData, onUpdate) => {
+        const remoteData = snapshot.val();
+        if (remoteData === null || remoteData === undefined) {
+            return;
+        }
+        let normalized = remoteData;
+        if (!Array.isArray(remoteData)) {
+            normalized = Object.values(remoteData);
+        }
+        if (Array.isArray(normalized)) {
+            onUpdate(normalized);
+        }
+    };
+
+    firebaseDb.ref('products').on('value', snapshot => {
+        updateIfRemoteExists(snapshot, products, newData => {
+            products = newData;
+            localStorage.setItem('products', JSON.stringify(products));
+            loadProducts();
+            loadManajemenBarang();
+            updateDashboard();
+            setFirebaseSyncStatus('Sinkron Firebase diterima: Produk diperbarui');
+        });
+    });
+
+    firebaseDb.ref('transactions').on('value', snapshot => {
+        updateIfRemoteExists(snapshot, transactions, newData => {
+            transactions = newData;
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateDashboard();
+            setFirebaseSyncStatus('Sinkron Firebase diterima: Transaksi diperbarui');
+        });
+    });
+
+    firebaseDb.ref('returTransactions').on('value', snapshot => {
+        updateIfRemoteExists(snapshot, returTransactions, newData => {
+            returTransactions = newData;
+            localStorage.setItem('returTransactions', JSON.stringify(returTransactions));
+            setFirebaseSyncStatus('Sinkron Firebase diterima: Retur diperbarui');
+        });
+    });
+
+    firebaseDb.ref('users').on('value', snapshot => {
+        updateIfRemoteExists(snapshot, users, newData => {
+            users = newData;
+            localStorage.setItem('users', JSON.stringify(users));
+            loadManajemenUser();
+            setFirebaseSyncStatus('Sinkron Firebase diterima: User diperbarui');
+        });
+    });
+
+    firebaseDb.ref('activityLogs').on('value', snapshot => {
+        updateIfRemoteExists(snapshot, activityLogs, newData => {
+            activityLogs = newData;
+            localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
+            loadLogAktivitas();
+            setFirebaseSyncStatus('Sinkron Firebase diterima: Log aktivitas diperbarui');
+        });
+    });
 }
 
 async function migrateToFirebase() {
