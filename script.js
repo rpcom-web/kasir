@@ -198,6 +198,54 @@ function triggerFirebaseManualSync() {
     console.log('Firebase manual sync terkirim.');
 }
 
+async function refreshDataFromFirebase() {
+    if (!firebaseDb) initFirebase();
+    if (!firebaseDb) {
+        alert('Firebase belum siap. Pastikan koneksi internet tersedia.');
+        return;
+    }
+
+    try {
+        const [productsSnap, transactionsSnap, returSnap, usersSnap, logsSnap] = await Promise.all([
+            firebaseDb.ref('products').once('value'),
+            firebaseDb.ref('transactions').once('value'),
+            firebaseDb.ref('returTransactions').once('value'),
+            firebaseDb.ref('users').once('value'),
+            firebaseDb.ref('activityLogs').once('value')
+        ]);
+
+        const toArray = remote => {
+            if (remote === null || remote === undefined) return [];
+            if (Array.isArray(remote)) return remote;
+            if (typeof remote === 'object') return Object.values(remote);
+            return [];
+        };
+
+        products = toArray(productsSnap.val());
+        transactions = toArray(transactionsSnap.val());
+        returTransactions = toArray(returSnap.val());
+        users = toArray(usersSnap.val());
+        activityLogs = toArray(logsSnap.val());
+
+        localStorage.setItem('products', JSON.stringify(products));
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        localStorage.setItem('returTransactions', JSON.stringify(returTransactions));
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
+
+        loadProducts();
+        loadManajemenBarang();
+        loadManajemenUser();
+        updateDashboard();
+        loadLogAktivitas();
+        setFirebaseSyncStatus('Refresh data Firebase selesai: ' + new Date().toLocaleTimeString('id-ID'));
+        alert('Refresh data Firebase berhasil.');
+    } catch (error) {
+        console.error('Refresh data Firebase gagal', error);
+        alert('Gagal refresh data Firebase: ' + (error.message || 'Unknown error'));
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     initFirebase();
