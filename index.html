@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div id="loginPage" class="login-page">
@@ -714,6 +716,9 @@
                             <button type="button" class="btn btn-danger" onclick="hapusSemua()">
                                 <i class="fas fa-trash"></i> Hapus Semua Data
                             </button>
+                            <button type="button" class="btn btn-primary" onclick="migrateToFirebase()">
+                                <i class="fas fa-cloud-upload-alt"></i> Migrasi ke Firebase
+                            </button>
                         </div>
                     </div>
 
@@ -744,6 +749,12 @@
                                 <label class="checkbox-label">
                                     <input type="checkbox" id="requirePasswordTransaction">
                                     <span>Password untuk Hapus Transaksi</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="syncFirebaseAuto">
+                                    <span>Sinkronisasi Otomatis ke Firebase (Setiap 5 menit)</span>
                                 </label>
                             </div>
                             <button type="button" class="btn btn-warning" onclick="gantiPassword()">
