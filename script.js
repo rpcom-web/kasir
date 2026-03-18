@@ -655,6 +655,7 @@ function prosesTransaksi() {
     updateCart();
     loadProducts();
     updateDashboard();
+    loadLaporan();
     
     // Reset form
     document.getElementById('diskonRp').value = 0;
@@ -1222,6 +1223,7 @@ function prosesTransaksiRetur() {
     saveProducts();
     loadProducts();
     updateDashboard();
+    loadLaporan();
     updateReturList();
     loadReturHistory();
 
