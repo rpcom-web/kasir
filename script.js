@@ -8,12 +8,138 @@ let users = [];
 let currentUser = { username: 'owner', role: 'Owner' };
 let scanEnabled = true;
 let autoAddEnabled = true;
+let firebaseApp = null;
+let firebaseDb = null;
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBcL6tAz0m1POm28Dtvtcu1Gylho6sK8Rg",
+    authDomain: "kasirdb-cd480.firebaseapp.com",
+    databaseURL: "https://kasirdb-cd480-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "kasirdb-cd480",
+    storageBucket: "kasirdb-cd480.firebasestorage.app",
+    messagingSenderId: "879659218803",
+    appId: "1:879659218803:web:63e354088734a82551f706",
+    measurementId: "G-TPJBSFRT08"
+};
+
+function initFirebase() {
+    if (typeof firebase === 'undefined' || !firebase.database) {
+        console.warn('Firebase SDK belum termuat. Pastikan skrip firebase-app-compat dan firebase-database-compat sudah dimuat.');
+        return;
+    }
+    try {
+        firebaseApp = firebase.initializeApp(firebaseConfig);
+        firebaseDb = firebase.database();
+        console.log('Firebase berhasil diinisialisasi.');
+    } catch (err) {
+        console.error('Gagal inisialisasi Firebase:', err);
+    }
+}
+
+function saveToFirebase(path, data) {
+    if (!firebaseDb) return;
+    firebaseDb.ref(path).set(data).catch(err => console.error('Firebase save error', err));
+}
+
+async function migrateToFirebase() {
+    if (!firebaseDb) {
+        initFirebase();
+    }
+    if (!firebaseDb) {
+        alert('Firebase belum siap. Pastikan koneksi Firebase berhasil.');
+        return;
+    }
+
+    const confirmMigrate = confirm('Migrasi data lokal ke Firebase akan menimpa data di Firebase. Lanjutkan?');
+    if (!confirmMigrate) return;
+
+    try {
+        await firebaseDb.ref('products').set(products);
+        await firebaseDb.ref('transactions').set(transactions);
+        await firebaseDb.ref('returTransactions').set(returTransactions);
+        await firebaseDb.ref('users').set(users);
+        await firebaseDb.ref('activityLogs').set(activityLogs);
+        alert('Migrasi ke Firebase berhasil!');
+        logAktivitas('Firebase', 'Migrasi data lokal ke Firebase selesai.');
+        setFirebaseSyncStatus('Migrasi terakhir: ' + new Date().toLocaleString('id-ID'));
+    } catch (error) {
+        console.error(error);
+        let message = 'Migrasi ke Firebase gagal: ' + (error.message || 'Unknown');
+        if (error.code === 'PERMISSION_DENIED' || message.includes('Permission denied')) {
+            message += '\n\nSilakan periksa Firebase Realtime Database Rules dan izinkan read/write sementara. Contoh rules: \n{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}';
+        }
+        alert(message);
+    }
+}
+
+let firebaseAutoSyncInterval = null;
+
+function updateFirebaseAutoSync() {
+    const enabled = document.getElementById('syncFirebaseAuto')?.checked;
+    if (!enabled) {
+        if (firebaseAutoSyncInterval) {
+            clearInterval(firebaseAutoSyncInterval);
+            firebaseAutoSyncInterval = null;
+        }
+        return;
+    }
+
+    if (!firebaseAutoSyncInterval) {
+        firebaseAutoSyncInterval = setInterval(() => {
+            if (!firebaseDb) initFirebase();
+            if (!firebaseDb) return;
+            saveToFirebase('products', products);
+            saveToFirebase('transactions', transactions);
+            saveToFirebase('returTransactions', returTransactions);
+            saveToFirebase('users', users);
+            saveToFirebase('activityLogs', activityLogs);
+            console.log('Firebase auto-sync berhasil.');
+        }, 5 * 60 * 1000);
+    }
+}
+
+function setFirebaseSyncStatus(status) {
+    const statusEl = document.getElementById('firebaseSyncStatus');
+    if (statusEl) {
+        statusEl.textContent = status;
+    }
+}
+
+function triggerFirebaseAutoSync() {
+    if (!firebaseDb) initFirebase();
+    if (!firebaseDb) return;
+    saveToFirebase('products', products);
+    saveToFirebase('transactions', transactions);
+    saveToFirebase('returTransactions', returTransactions);
+    saveToFirebase('users', users);
+    saveToFirebase('activityLogs', activityLogs);
+    const now = new Date();
+    const ts = now.toLocaleTimeString('id-ID');
+    setFirebaseSyncStatus('Sinkron otomatis terakhir: ' + ts);
+    console.log('Firebase manual sync terkirim.');
+}
+
+function triggerFirebaseManualSync() {
+    if (!firebaseDb) initFirebase();
+    if (!firebaseDb) return;
+    saveToFirebase('products', products);
+    saveToFirebase('transactions', transactions);
+    saveToFirebase('returTransactions', returTransactions);
+    saveToFirebase('users', users);
+    saveToFirebase('activityLogs', activityLogs);
+    const now = new Date();
+    const ts = now.toLocaleTimeString('id-ID');
+    setFirebaseSyncStatus('Sinkron manual terakhir: ' + ts);
+    console.log('Firebase manual sync terkirim.');
+}
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    initFirebase();
     loadData();
     loadProducts();
     updateDashboard();
+    setFirebaseSyncStatus('Belum disinkron');
     updateCart();
     loadManajemenUser();
     loadPengaturan();
@@ -113,15 +239,23 @@ function loadSession() {
 
 function saveProducts() {
     localStorage.setItem('products', JSON.stringify(products));
+    saveToFirebase('products', products);
 }
 
 // Save transactions to localStorage
 function saveTransactions() {
     localStorage.setItem('transactions', JSON.stringify(transactions));
+    saveToFirebase('transactions', transactions);
 }
 
 function saveUsers() {
     localStorage.setItem('users', JSON.stringify(users));
+    saveToFirebase('users', users);
+}
+
+function saveReturTransactions() {
+    localStorage.setItem('returTransactions', JSON.stringify(returTransactions));
+    saveToFirebase('returTransactions', returTransactions);
 }
 
 function updateCurrentUserDisplay() {
@@ -1382,7 +1516,9 @@ function loadStoredSettings() {
     if (keamananSettings.timeout) document.getElementById('timeoutSesi').value = keamananSettings.timeout;
     document.getElementById('logActivity').checked = keamananSettings.logActivity !== false;
     document.getElementById('requirePasswordTransaction').checked = keamananSettings.requirePasswordTransaction !== false;
+    document.getElementById('syncFirebaseAuto').checked = keamananSettings.syncFirebaseAuto !== false;
 
+    updateFirebaseAutoSync();
     ubahTema();
     ubahUkuranFont();
 }
@@ -1556,10 +1692,12 @@ function simpanPengaturanKeamanan() {
         requiredLogin: document.getElementById('requiredLogin').checked,
         timeout: document.getElementById('timeoutSesi').value,
         logActivity: document.getElementById('logActivity').checked,
-        requirePasswordTransaction: document.getElementById('requirePasswordTransaction').checked
+        requirePasswordTransaction: document.getElementById('requirePasswordTransaction').checked,
+        syncFirebaseAuto: document.getElementById('syncFirebaseAuto').checked
     };
     
     localStorage.setItem('keamananSettings', JSON.stringify(keamananSettings));
+    updateFirebaseAutoSync();
     alert('✅ Pengaturan keamanan berhasil disimpan!');
 }
 
